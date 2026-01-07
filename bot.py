@@ -1,10 +1,13 @@
 import discord
-from discord.ext import commands
+import os
+from discord.ext import commands, tasks
 from mcstatus import JavaServer
+from dotenv import load_dotenv
 
-# Configuración
-TOKEN = 'MTQ1ODUzNjg0ODk2NzMzNjA4OQ.G2M-_V.5_WQHtNIfl-jGRMc8wxPxx8fsf29HkzgJeFbkU'
-SERVER_IP = 'society-detroit.gl.joinmc.link' # Ejemplo: 'localhost' o '192.168.1.1'
+# Carga las variables del archivo .env
+load_dotenv()
+TOKEN = os.getenv('DISCORD_TOKEN')
+SERVER_IP = os.getenv('MC_SERVER_IP')
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -12,40 +15,18 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f'Bot conectado como {bot.user}')
+    print(f'Bot iniciado como {bot.user}')
+    update_status.start()
 
-@bot.command()
-async def status(ctx):
+@tasks.loop(seconds=60)
+async def update_status():
     try:
-        # Buscamos el servidor de Minecraft
         server = JavaServer.lookup(SERVER_IP)
         status = server.status()
+        await bot.change_presence(activity=discord.Game(name=f"MC: {status.players.online} online"))
+    except:
+        await bot.change_presence(activity=discord.Game(name="Servidor Offline 🔴"))
 
-        # Creamos un mensaje elegante (Embed)
-        embed = discord.Embed(title="📊 Estado del Servidor", color=discord.Color.green())
-        embed.add_field(name="Estado", value=" Online", inline=True)
-        embed.add_field(name="Jugadores", value=f"{status.players.online}/{status.players.max}", inline=True)
-        embed.add_field(name="Ping", value=f"{round(status.latency, 2)} ms", inline=True)
-        
-        if status.players.sample:
-            names = ", ".join([p.name for p in status.players.sample])
-            embed.add_field(name="Conectados", value=names, inline=False)
-
-        await ctx.send(embed=embed)
-
-    except Exception as e:
-        await ctx.send(f" El servidor está offline o no se pudo conectar.\nError: {e}")
+# ... puedes añadir aquí el comando !status que ya teníamos ...
 
 bot.run(TOKEN)
-
-
-
-
-
-
-
-
-
-
-
-#
